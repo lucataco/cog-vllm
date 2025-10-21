@@ -1,6 +1,7 @@
 model_path
 .cog
 __pycache__
+checkpoints/
 
 models/**
 hf-cache/

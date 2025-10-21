@@ -15,6 +15,7 @@ from cog import BasePredictor, AsyncConcatenateIterator, Input
 from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs  # pylint: disable=import-error
 from vllm.sampling_params import SamplingParams  # pylint: disable=import-error
+from transformers import AutoTokenizer  # pylint: disable=import-error
 
 import prompt_templates
 from utils import resolve_model_path
@@ -22,7 +23,6 @@ from utils import resolve_model_path
 PROMPT_TEMPLATE = prompt_templates.COMPLETION  # Change this for instruct models
 
 SYSTEM_PROMPT = "You are a helpful assistant."
-
 
 @dataclass
 class PredictorConfig:
@@ -124,7 +124,26 @@ class Predictor(BasePredictor):
                 "or a path to the weights file."
             )
 
-        weights = await resolve_model_path(str(weights))
+        # Handle URLFile objects from Cog
+        if hasattr(weights, '__str__'):
+            # URLFile objects need special handling
+            weights_str = str(weights)
+            # Check if it's a URLFile representation (contains 'URLFile at')
+            if 'URLFile' in weights_str:
+                # Extract the actual URL from the representation
+                # Format: "<URLFile at 0x... for 'URL'>"
+                import re
+                match = re.search(r"for '([^']+)'", weights_str)
+                if match:
+                    weights_path = match.group(1)
+                else:
+                    raise ValueError(f"Could not extract URL from URLFile: {weights_str}")
+            else:
+                weights_path = weights_str
+        else:
+            weights_path = str(weights)
+        
+        weights = await resolve_model_path(weights_path)
         self.config = self.load_config(weights)
 
         engine_args = self.config.engine_args or {}
@@ -149,11 +168,8 @@ class Predictor(BasePredictor):
             raise
 
         # pylint: disable=attribute-defined-outside-init
-        self.tokenizer = (
-            self.engine.engine.tokenizer.tokenizer
-            if hasattr(self.engine.engine.tokenizer, "tokenizer")
-            else self.engine.engine.tokenizer
-        )
+        # Load tokenizer directly from the model path
+        self.tokenizer = AutoTokenizer.from_pretrained(weights)
 
         if self.config.prompt_template:
             print(
@@ -221,16 +237,16 @@ class Predictor(BasePredictor):
             description="A comma-separated list of sequences to stop generation at. "
             "For example, '<end>,<stop>' will stop generation at the first instance of "
             "'end' or '<stop>'.",
-            default=None,
+            default="",
         ),
         prompt_template: str = Input(
             description="A template to format the prompt with. If not provided, "
             "the default prompt template will be used.",
-            default=None,
+            default="",
         ),
         seed: int = Input(
             description="Random seed. Leave blank to randomize the seed.",
-            default=None,
+            default=0,
         ),
     ) -> AsyncConcatenateIterator[str]:
         start = time.time()
@@ -264,9 +280,10 @@ class Predictor(BasePredictor):
                 )
         elif system_prompt:
             # pylint: disable=no-member
-            self.log(
-                "Warning: ignoring system prompt because no chat template was configured"
-            )
+            if hasattr(self, 'log'):
+                self.log(
+                    "Warning: ignoring system prompt because no chat template was configured"
+                )
 
         sampling_params = SamplingParams(
             n=1,
@@ -278,7 +295,6 @@ class Predictor(BasePredictor):
             stop_token_ids=[self.tokenizer.eos_token_id],
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
-            use_beam_search=False,
             seed=seed,
         )
         if isinstance(stop_sequences, str) and stop_sequences:
@@ -302,11 +318,6 @@ class Predictor(BasePredictor):
                 len(result.outputs) == 1
             ), "Expected exactly one output from generation request."
 
-            if result.outputs[0].finish_reason == "length" and start != 0:
-                # hard to find the max length though, sorry
-                raise UserError(
-                    "E1002 PromptTooLong: Prompt length exceeds maximum input length"
-                )
             text = result.outputs[0].text
 
             # Normalize text by removing any incomplete surrogate pairs (common with emojis)
@@ -317,14 +328,15 @@ class Predictor(BasePredictor):
             start = len(text)
 
         # pylint: disable=no-member
-        self.log(f"Generation took {time.time() - start:.2f}s")
-        self.log(f"Formatted prompt: {prompt}")
-        self.log(f"Random seed used: `{seed}`\n")
-        self.log(
-            "Note: Random seed will not impact output if greedy decoding is used.\n"
-        )
+        if hasattr(self, 'log'):
+            self.log(f"Generation took {time.time() - start:.2f}s")
+            self.log(f"Formatted prompt: {prompt}")
+            self.log(f"Random seed used: `{seed}`\n")
+            self.log(
+                "Note: Random seed will not impact output if greedy decoding is used.\n"
+            )
 
-        if not self._testing:
+        if not self._testing and hasattr(cog, 'emit_metric'):
             # pylint: disable=no-member, undefined-loop-variable
             cog.emit_metric("input_token_count", len(result.prompt_token_ids))
             cog.emit_metric("output_token_count", len(result.outputs[0].token_ids))
