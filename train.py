@@ -23,7 +23,7 @@ class TrainingOutput(BaseModel):
     weights: Path
 
 
-def train(
+def train(  # pylint: disable=too-many-positional-arguments
     hf_model_id: str = Input(
         description="""
         Hugging Face model identifier 

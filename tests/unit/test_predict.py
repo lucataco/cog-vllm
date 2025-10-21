@@ -19,9 +19,6 @@ sys.modules["vllm.engine.arg_utils"] = MagicMock()
 sys.modules["vllm.sampling_params"] = MagicMock()
 
 
-from predict import Predictor, PredictorConfig, UserError # pylint: disable=import-error, wrong-import-position
-
-
 class MockInput: # pylint: disable=too-few-public-methods
     """
     Use this to mock default inputs for the Predictor class.
@@ -34,8 +31,20 @@ class MockInput: # pylint: disable=too-few-public-methods
         return bool(self.default)
 
 
-sys.modules["cog"] = Mock()
-sys.modules["cog"].Input = MockInput
+# Mock cog module before importing predict
+class MockBasePredictor:
+    """Mock base predictor class"""
+    pass
+
+mock_cog = Mock()
+mock_cog.Input = MockInput
+mock_cog.BasePredictor = MockBasePredictor
+mock_cog.AsyncConcatenateIterator = MagicMock()
+mock_cog.emit_metric = MagicMock()
+sys.modules["cog"] = mock_cog
+sys.modules["transformers"] = MagicMock()
+
+from predict import Predictor, PredictorConfig, UserError # pylint: disable=import-error, wrong-import-position
 
 
 @pytest.fixture

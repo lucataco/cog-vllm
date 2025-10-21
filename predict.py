@@ -1,6 +1,7 @@
 # pylint: disable=missing-module-docstring, no-name-in-module, attribute-defined-outside-init
 import json
 import os
+import re
 import time
 from typing import Optional, Dict
 from uuid import uuid4
@@ -115,7 +116,7 @@ def format_prompt(
 class Predictor(BasePredictor):
     async def setup(
         self, weights: str
-    ):  # pylint: disable=invalid-overridden-method, signature-differs
+    ):  # pylint: disable=invalid-overridden-method, signature-differs, too-many-branches, too-many-statements
         if not weights:
             raise ValueError(
                 "Weights must be provided. "
@@ -132,7 +133,6 @@ class Predictor(BasePredictor):
             if 'URLFile' in weights_str:
                 # Extract the actual URL from the representation
                 # Format: "<URLFile at 0x... for 'URL'>"
-                import re
                 match = re.search(r"for '([^']+)'", weights_str)
                 if match:
                     weights_path = match.group(1)
@@ -142,7 +142,7 @@ class Predictor(BasePredictor):
                 weights_path = weights_str
         else:
             weights_path = str(weights)
-        
+
         weights = await resolve_model_path(weights_path)
         self.config = self.load_config(weights)
 
@@ -199,7 +199,7 @@ class Predictor(BasePredictor):
         print("Test prediction output:", test_output)
         self._testing = False
 
-    async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ, too-many-arguments, too-many-locals
+    async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ, too-many-arguments, too-many-locals, too-many-positional-arguments
         self,
         prompt: str = Input(description="Prompt", default=""),
         system_prompt: str = Input(
