@@ -11,7 +11,7 @@ import random
 import jinja2
 import torch  # pylint: disable=import-error
 import cog  # pylint: disable=import-error
-from cog import BasePredictor, ConcatenateIterator, Input
+from cog import BasePredictor, AsyncConcatenateIterator, Input
 from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs  # pylint: disable=import-error
 from vllm.sampling_params import SamplingParams  # pylint: disable=import-error
@@ -232,7 +232,7 @@ class Predictor(BasePredictor):
             description="Random seed. Leave blank to randomize the seed.",
             default=None,
         ),
-    ) -> ConcatenateIterator[str]:
+    ) -> AsyncConcatenateIterator[str]:
         start = time.time()
         if not seed:
             seed = int(random.randint(0, 100000))
