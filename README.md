@@ -28,7 +28,7 @@ you can run vLLM models locally using this cog-vllm wrapper.
 
 You'll need:
 - A URL to a `.tar` archive containing your model weights, or a local path to model files
-- Cog installed ([v0.10.0-alpha11](https://github.com/replicate/cog/releases/tag/v0.10.0-alpha11) or later)
+- Cog installed ([v0.14.0](https://github.com/replicate/cog/releases/tag/v0.14.0) or later)
 - A GPU-enabled machine for optimal performance
 
 ### Installation
@@ -36,7 +36,7 @@ You'll need:
 Start by [installing or upgrading Cog](https://cog.run/#install):
 
 ```console
-$ sudo curl -o /usr/local/bin/cog -L "https://github.com/replicate/cog/releases/download/v0.10.0-alpha11/cog_$(uname -s)_$(uname -m)"
+$ sudo curl -o /usr/local/bin/cog -L "https://github.com/replicate/cog/releases/download/v0.16.8/cog_$(uname -s)_$(uname -m)"
 $ sudo chmod +x /usr/local/bin/cog
 ```
 
