@@ -1,9 +1,10 @@
 #!/bin/sh
 
 # Mirror of https://huggingface.co/EleutherAI/pythia-70m
-# COG_WEIGHTS="https://replicate.delivery/czjl/HUTgHv0M6FbnJxzkbe7Ly1fN19tabwYOZTFLuJld3f7MifpLB/model.tar"
+COG_WEIGHTS="https://replicate.delivery/czjl/HUTgHv0M6FbnJxzkbe7Ly1fN19tabwYOZTFLuJld3f7MifpLB/model.tar"
 
 exec cog predict \
+    -e COG_WEIGHTS=$COG_WEIGHTS \
     -i prompt="write a python program that prints Hello World!" \
     -i max_tokens=512 \
     -i temperature=0.6 \
