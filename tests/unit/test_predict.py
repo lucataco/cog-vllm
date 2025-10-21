@@ -34,7 +34,6 @@ class MockInput: # pylint: disable=too-few-public-methods
 # Mock cog module before importing predict
 class MockBasePredictor:
     """Mock base predictor class"""
-    pass
 
 mock_cog = Mock()
 mock_cog.Input = MockInput
