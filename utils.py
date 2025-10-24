@@ -99,7 +99,6 @@ async def maybe_download_tarball_with_pget(
     print("Downloading model assets...")
     start_time = time.time()
     command = ["pget", url, first_dest, "-x"]
-    # subprocess.check_call(command, close_fds=True)
 
     process = await asyncio.create_subprocess_exec(*command, close_fds=True)
     await process.wait()
