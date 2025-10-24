@@ -33,7 +33,6 @@ import time
 from typing import Optional, Dict
 from uuid import uuid4
 from dataclasses import dataclass, field
-from pprint import pprint
 from pathlib import Path
 from urllib.parse import urlparse
 import inspect
@@ -49,9 +48,8 @@ from transformers import AutoTokenizer  # pylint: disable=import-error
 import prompt_templates
 from utils import resolve_model_path
 
-PROMPT_TEMPLATE = prompt_templates.COMPLETION  # Change this for instruct models
-SYSTEM_PROMPT = "You are a helpful assistant."
-# COG_WEIGHTS="Qwen/Qwen3-VL-8B-Instruct"
+PROMPT_TEMPLATE = prompt_templates.COMPLETION
+# COG_WEIGHTS = "Qwen/Qwen3-VL-8B-Instruct"
 COG_WEIGHTS="https://weights.replicate.delivery/default/Qwen/Qwen3-VL-8B-Instruct/model.tar"
 
 @dataclass
@@ -80,11 +78,6 @@ class PredictorConfig:
 
 # pylint: disable=missing-class-docstring
 class UserError(Exception):
-    pass
-
-
-# pylint: disable=missing-class-docstring
-class VLLMError(Exception):
     pass
 
 
@@ -142,10 +135,6 @@ def format_prompt(
 
 # pylint: disable=missing-class-docstring
 class Predictor(BasePredictor):
-    def train(self, **kwargs):  # pylint: disable=unused-argument
-        """Training is not supported for this model."""
-        raise NotImplementedError("Training is not supported for this inference-only model.")
-
     # pylint: disable=invalid-overridden-method,too-many-branches
     async def setup(
         self, weights: str = None
@@ -493,7 +482,7 @@ class Predictor(BasePredictor):
 
         else:
             config = PredictorConfig()
-        pprint(config)
+        print(f"Loaded config: {config}")
         return config
 
     _defaults = {

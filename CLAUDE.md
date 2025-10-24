@@ -24,7 +24,7 @@ This is a Cog wrapper for vLLM that enables deploying vLLM-supported language mo
   - Falls back to local directory if volume unavailable
   - Creates symlinks to optimize storage
 
-- **prompt_templates.py**: Pre-defined prompt templates (COMPLETION, LLAMA_3_INSTRUCT, LLAMA_2_INSTRUCT, MISTRAL_INSTRUCT)
+- **prompt_templates.py**: Contains the default COMPLETION prompt template
 
 ### Configuration System
 
