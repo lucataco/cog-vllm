@@ -82,6 +82,7 @@ cog run -p 5000 -e "COG_WEIGHTS=<url>" python -m cog.server.http
 
 # Run tests with pytest
 pytest tests/end_to_end/local/test_predict.py
+pytest tests/unit
 ```
 
 ### Building & Deployment
