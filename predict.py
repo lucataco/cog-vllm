@@ -45,7 +45,7 @@ from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs  # pylint: disable=import-error
 from vllm.sampling_params import SamplingParams  # pylint: disable=import-error
 from transformers import AutoTokenizer  # pylint: disable=import-error
-from PIL import Image  # pylint: disable=import-error
+from PIL import Image
 import prompt_templates
 from utils import resolve_model_path
 
@@ -233,7 +233,8 @@ class Predictor(BasePredictor):
         print("Setup complete, test prediction output:", test_output)
         self._testing = False
 
-    async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ, too-many-arguments, too-many-locals, too-many-positional-arguments
+    # pylint: disable=arguments-differ, too-many-positional-arguments, too-many-statements
+    async def predict(
         self,
         prompt: str = Input(description="Prompt", default=""),
         image: cog.Path = Input(
@@ -500,7 +501,7 @@ class Predictor(BasePredictor):
                                   f"using local path instead of downloading")
                             return str(local_model_path)
                     except (PermissionError, OSError) as e:
-                        print(f"Warning: Cannot read cached model directory {local_model_path}: {e}")
+                        print(f"Warning: Cannot read cached dir {local_model_path}: {e}")
 
         return weights_path
 

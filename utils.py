@@ -4,9 +4,7 @@ import subprocess
 import time
 import warnings
 from urllib.parse import urlparse
-from pathlib import Path
 import asyncio
-import shutil
 
 
 async def resolve_model_path(url_or_local_path: str) -> str:
@@ -48,57 +46,26 @@ async def maybe_download_tarball_with_pget(
     dest: str,
 ):
     """
-    Checks for existing model weights in a local volume or checkpoints cache,
-    downloads if necessary, and sets up symlinks.
-
-    This function first checks if weights exist in the local checkpoints cache.
-    If not, it checks for a local volume (/weights) and uses that if available.
-    If the weights already exist in any location, no download occurs.
+    Downloads and extracts model weights to the local checkpoints directory.
 
     Args:
         url (str): URL to the model tarball.
-        dest (str): Destination path for the weights (e.g., ./checkpoints/{model_name}).
+        dest (str): Destination path (e.g., ./checkpoints/{model_name}).
 
     Returns:
-        str: Path to the directory containing the model weights, which may be either
-             the original destination or a symlink to the local volume.
-
-    Note:
-        - Prioritizes using existing cache in ./checkpoints/ over /weights volume
-        - If weights are in the local volume, a symlink is created to `dest`.
-        - If weights are already present in either location, no download occurs.
+        str: Path to the extracted model weights.
     """
-    # First check if dest (checkpoints cache) already exists and has files
+    # Check if model already exists in checkpoints
     if os.path.exists(dest) and os.listdir(dest):
         print(f"Files already present in `{dest}`, using cached version.")
         return dest
 
-    try:
-        Path("/weights").mkdir(exist_ok=True)
-        first_dest = "/weights/vllm"
-    except PermissionError:
-        print("/weights doesn't exist, and we couldn't create it")
-        first_dest = dest
-
-    # if first_dest (/weights/vllm) exists and is not empty, use it
-    if os.path.exists(first_dest) and os.listdir(first_dest):
-        print(f"Files already present in `{first_dest}`, nothing will be downloaded.")
-        if first_dest != dest:
-            try:
-                if os.path.islink(dest):
-                    os.unlink(dest)
-                os.symlink(first_dest, dest)
-            except FileExistsError:
-                print(f"Ignoring existing file at {dest}")
-        return dest
-
-    # if dest exists but is empty, remove it so we can pull with pget
-    if os.path.exists(first_dest):
-        shutil.rmtree(first_dest)
-
+    # Download and extract directly to checkpoints folder
     print("Downloading model assets...")
     start_time = time.time()
-    command = ["pget", url, first_dest, "-x"]
+
+    # Use -xf flags: -x for extract, -f for force (overwrite if needed)
+    command = ["pget", url, dest, "-xf"]
 
     process = await asyncio.create_subprocess_exec(*command, close_fds=True)
     await process.wait()
@@ -106,11 +73,6 @@ async def maybe_download_tarball_with_pget(
         raise subprocess.CalledProcessError(process.returncode, command)
 
     print(f"Downloaded model assets in {time.time() - start_time:.2f}s")
-    if first_dest != dest:
-        if os.path.islink(dest):
-            os.unlink(dest)
-        os.symlink(first_dest, dest)
-
     return dest
 
 
