@@ -1,11 +1,12 @@
 #!/bin/sh
 
 # Mirror of https://huggingface.co/EleutherAI/pythia-70m
-COG_WEIGHTS="https://replicate.delivery/czjl/HUTgHv0M6FbnJxzkbe7Ly1fN19tabwYOZTFLuJld3f7MifpLB/model.tar"
+# COG_WEIGHTS="https://replicate.delivery/czjl/HUTgHv0M6FbnJxzkbe7Ly1fN19tabwYOZTFLuJld3f7MifpLB/model.tar"
+COG_WEIGHTS="https://weights.replicate.delivery/default/Qwen/Qwen3-VL-8B-Instruct/model.tar"
 
 exec cog predict \
     -e COG_WEIGHTS=$COG_WEIGHTS \
-    -i prompt="write a python program that prints Hello World!" \
+    -i prompt="Who are you?" \
     -i max_tokens=512 \
     -i temperature=0.6 \
     -i top_p=0.9 \
