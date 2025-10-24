@@ -27,8 +27,8 @@ you can run vLLM models locally using this cog-vllm wrapper.
 ### Prerequisites
 
 You'll need:
-- A URL to a `.tar` archive containing your model weights, or a local path to model files
-- Cog installed ([v0.14.0](https://github.com/replicate/cog/releases/tag/v0.14.0) or later)
+- Either a huggingface model (username/model-name) or a URL to a `.tar` archive containing your model weights
+- Cog installed ([v0.16.8](https://github.com/replicate/cog/releases/tag/v0.16.8) or newer)
 - A GPU-enabled machine for optimal performance
 
 ### Installation
@@ -47,54 +47,43 @@ $ git clone https://github.com/replicate/cog-vllm
 $ cd cog-vllm
 ```
 
-Set the `COG_WEIGHTS` environment variable with your model weights URL or local path: 
+Set the `COG_WEIGHTS` variable in `predict.py` with your model weights model name or URL:
 
 ```console
-$ export COG_WEIGHTS="https://your-weights-url.com/model.tar"
+$ COG_WEIGHTS="https://your-weights-url.com/model.tar"
 # or for local development:
-$ export COG_WEIGHTS="/path/to/local/model/directory"
+$ COG_WEIGHTS="Qwen/Qwen3-VL-8B-Instruct"
 ```
+
+## To create a model.tar file:
+
+```console
+$ huggingface-cli download Qwen/Qwen3-VL-8B-Instruct --local-dir checkpoints
+$ cd checkpoints
+$ tar -cvf model.tar --exclude=model.tar -C . .
+```
+Then upload model.tar to your own storage service.
 
 ### Running Predictions
 
 Make your first prediction against the model locally:
 
 ```console
-$ cog predict -e "COG_WEIGHTS=$COG_WEIGHTS" \ 
-              -i prompt="Hello!"
+$ cog predict -i prompt="Who are you?"
 ```
 
-The first time you run this command with a URL,
-Cog downloads the model weights and saves them to the local directory.
-
-To make multiple predictions,
-start up the HTTP server and send it `POST /predictions` requests:
-
-```console
-# Start the HTTP server
-$ cog run -p 5000 -e "COG_WEIGHTS=$COG_WEIGHTS" python -m cog.server.http
-
-# In a different terminal session, send requests to the server
-$ curl http://localhost:5000/predictions -X POST \
-    -H 'Content-Type: application/json' \
-    -d '{"input": {"prompt": "Hello!"}}'
-```
+The first time you run this command with a model name or URL,
+Cog downloads the model weights and saves them to a local checkpointsdirectory.
 
 ## Deploying to Replicate
 
 When you're ready to deploy your model to Replicate,
 you can push your changes:
 
-Grab your token from [replicate.com/account](https://replicate.com/account) 
-and set it as an environment variable:
 
 ```shell
-export REPLICATE_API_TOKEN=<your token>
-```
-
-```console
-$ echo $REPLICATE_API_TOKEN | cog login --token-stdin
-$ cog push r8.im/<your-username>/<your-model-name>
+$ cog login
+$ cog push r8.im/<your-username>/<model-name>
 --> ...
 --> Pushing image 'r8.im/...'
 ```
@@ -117,7 +106,7 @@ import replicate
 model = replicate.models.get("<your-username>/<your-model-name>")
 prediction = replicate.predictions.create(
     version=model.latest_version,
-    input={"prompt": "Hello"},
+    input={"prompt": "Who are you?"},
     stream=True
 )
 
@@ -125,9 +114,5 @@ for event in prediction.stream():
     print(str(event), end="")
 ```
 
-> **Note**: When deploying to Replicate, you'll need to ensure your model has access to the weights.
-> You can either bake the weights into your model image or provide the `COG_WEIGHTS` URL at runtime.
-
 [Replicate]: https://replicate.com
-[vLLM-supported language model]: https://docs.vllm.ai/en/latest/models/supported_models.html
 [replicate-python]: https://github.com/replicate/replicate-python

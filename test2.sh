@@ -1,7 +1,10 @@
 #!/bin/sh
-# Assumes COG_WEIGHTS is set in predict.py
+
+# Mirror of https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct
+COG_WEIGHTS="https://weights.replicate.delivery/default/Qwen/Qwen3-VL-8B-Instruct/model.tar"
 
 exec cog predict \
+    -e COG_WEIGHTS=$COG_WEIGHTS \
     -i prompt="Who are you?" \
     -i max_tokens=512 \
     -i temperature=0.6 \

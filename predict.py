@@ -3,7 +3,6 @@
 # Fix for cuDNN library path issue with vLLM 0.11.0
 # Must be set before importing vLLM to avoid "undefined symbol: cudnnGetLibConfig" error
 import os
-import sys
 try:
     import nvidia.cublas.lib
     import nvidia.cudnn.lib
@@ -23,8 +22,8 @@ try:
 
     if paths_to_add:
         current_ld_path = os.environ.get('LD_LIBRARY_PATH', '')
-        new_ld_path = ':'.join(paths_to_add + [current_ld_path])
-        os.environ['LD_LIBRARY_PATH'] = new_ld_path
+        NEW_LD_PATH = ':'.join(paths_to_add + [current_ld_path])
+        os.environ['LD_LIBRARY_PATH'] = NEW_LD_PATH
 except (ImportError, AttributeError, TypeError):
     # If nvidia libs not found or can't determine path, continue anyway
     pass
@@ -143,6 +142,11 @@ def format_prompt(
 
 # pylint: disable=missing-class-docstring
 class Predictor(BasePredictor):
+    def train(self, **kwargs):  # pylint: disable=unused-argument
+        """Training is not supported for this model."""
+        raise NotImplementedError("Training is not supported for this inference-only model.")
+
+    # pylint: disable=invalid-overridden-method,too-many-branches
     async def setup(
         self, weights: str = None
     ):  # check if weights is provided or COG_WEIGHTS is set
@@ -162,13 +166,16 @@ class Predictor(BasePredictor):
         # These are special types that Cog uses to pass URLs as file-like objects
         weights_path = self._extract_weights_path(weights)
 
-        # If weights_path is a local path (cached), use it directly without calling resolve_model_path
-        # This avoids any potential re-download attempts
+        # If weights_path is a local path (cached), use it directly
+        # without calling resolve_model_path to avoid re-download attempts
         parsed = urlparse(weights_path)
 
         if parsed.scheme in ["", "file"]:
             # It's a local path, check if it exists and use it directly
-            if os.path.exists(weights_path) and os.path.isdir(weights_path) and os.listdir(weights_path):
+            is_valid_dir = (os.path.exists(weights_path) and
+                           os.path.isdir(weights_path) and
+                           os.listdir(weights_path))
+            if is_valid_dir:
                 print(f"Using cached model from: {weights_path}")
                 weights = weights_path
             else:
@@ -413,7 +420,9 @@ class Predictor(BasePredictor):
         # Check if this is a URL and if we have it cached locally
         if weights_path.startswith(('http://', 'https://')):
             # Extract model name from URL
-            # Example: https://weights.replicate.delivery/default/Qwen/Qwen3-VL-8B-Instruct/model.tar
+            # Example:
+            # https://weights.replicate.delivery/default/Qwen/
+            #   Qwen3-VL-8B-Instruct/model.tar
             # Should extract: Qwen3-VL-8B-Instruct
             url_parts = urlparse(weights_path)
             path_parts = url_parts.path.strip('/').split('/')
@@ -437,7 +446,8 @@ class Predictor(BasePredictor):
                 if local_model_path.exists() and local_model_path.is_dir():
                     # Check if directory has files (not empty)
                     if any(local_model_path.iterdir()):
-                        print(f"Found cached model at {local_model_path}, using local path instead of downloading")
+                        print(f"Found cached model at {local_model_path}, "
+                              f"using local path instead of downloading")
                         return str(local_model_path)
 
         return weights_path

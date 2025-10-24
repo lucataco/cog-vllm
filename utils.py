@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 import os
 import subprocess
 import time
@@ -56,7 +57,7 @@ async def maybe_download_tarball_with_pget(
 
     Args:
         url (str): URL to the model tarball.
-        dest (str): Intended destination path for the model weights (e.g., ./checkpoints/{model_name}).
+        dest (str): Destination path for the weights (e.g., ./checkpoints/{model_name}).
 
     Returns:
         str: Path to the directory containing the model weights, which may be either
@@ -127,8 +128,6 @@ async def download_tarball(url: str) -> str:
     Returns:
         str: Path to the directory where the tarball was extracted.
     """
-    from urllib.parse import urlparse
-
     # Extract model name from URL
     # Example: https://weights.replicate.delivery/default/Qwen/Qwen3-VL-8B-Instruct/model.tar
     # Should extract: Qwen3-VL-8B-Instruct
