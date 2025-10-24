@@ -114,6 +114,8 @@ nvidia-nvtx-cu12==12.8.90
     # via torch
 packaging==25.0
     # via huggingface-hub
+pillow==12.0.0
+    # via cog-vllm (pyproject.toml)
 propcache==0.4.1
     # via
     #   aiohttp
