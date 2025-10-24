@@ -135,6 +135,10 @@ def format_prompt(
 
 # pylint: disable=missing-class-docstring
 class Predictor(BasePredictor):
+    def train(self, **kwargs):  # pylint: disable=unused-argument
+        """Training is not supported for this model."""
+        raise NotImplementedError("Training is not supported for this inference-only model.")
+
     # pylint: disable=invalid-overridden-method,too-many-branches
     async def setup(
         self, weights: str = None
