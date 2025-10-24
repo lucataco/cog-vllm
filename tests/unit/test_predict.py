@@ -178,7 +178,9 @@ async def test_predict(mock_dependencies):
 
             # Call the predict method
             result = predictor.predict(
-                prompt="Test prompt", prompt_template=MockInput(default=None)
+                prompt="Test prompt",
+                image=None,  # Explicitly pass None for the new image parameter
+                prompt_template=MockInput(default=None)
             )
 
             # Consume the async generator

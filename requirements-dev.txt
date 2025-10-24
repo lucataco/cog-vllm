@@ -5,3 +5,4 @@ black
 cog==0.16.8
 attrs>=20.1,<24
 jinja2
+pillow

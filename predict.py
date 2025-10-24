@@ -45,6 +45,7 @@ from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs  # pylint: disable=import-error
 from vllm.sampling_params import SamplingParams  # pylint: disable=import-error
 from transformers import AutoTokenizer  # pylint: disable=import-error
+from PIL import Image
 import prompt_templates
 from utils import resolve_model_path
 
@@ -156,7 +157,7 @@ class Predictor(BasePredictor):
             )
 
         # Handle URLFile/URLPath objects from Cog
-        # These are special types that Cog uses to pass URLs as file-like objects
+        # Download if checkpoints directory doesn't exist
         weights_path = self._extract_weights_path(weights)
 
         # If weights_path is a local path (cached), use it directly
@@ -232,9 +233,15 @@ class Predictor(BasePredictor):
         print("Setup complete, test prediction output:", test_output)
         self._testing = False
 
-    async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ, too-many-arguments, too-many-locals, too-many-positional-arguments
+    # pylint: disable=arguments-differ, too-many-positional-arguments, too-many-statements
+    async def predict(
         self,
         prompt: str = Input(description="Prompt", default=""),
+        image: cog.Path = Input(
+            description="Input image for vision-language models. Supports both file uploads "
+            "and URLs. Optional - omit for text-only inference.",
+            default=None,
+        ),
         system_prompt: str = Input(
             description="System prompt to send to the model. This is prepended to "
             "the prompt and helps guide system behavior. Ignored for non-chat models.",
@@ -286,6 +293,20 @@ class Predictor(BasePredictor):
         if not seed:
             seed = int(random.randint(0, 100000))
 
+        # Load and process image if provided
+        image_data = None
+        if image is not None:
+            try:
+                # Load image using PIL - Cog handles URL downloads automatically for Path type
+                pil_image = Image.open(str(image))
+                # Convert to RGB to ensure compatibility with vision models
+                image_data = pil_image.convert("RGB")
+                print(f"Loaded image: {image_data.size} pixels, mode: {image_data.mode}")
+            except Exception as e:
+                raise UserError(
+                    f"E1005 ImageLoadError: Failed to load image: {repr(e)}"
+                ) from e
+
         if prompt_template or self.prompt_template:
             prompt_template = prompt_template or self.prompt_template
             prompt = format_prompt(
@@ -296,18 +317,34 @@ class Predictor(BasePredictor):
 
         elif self.tokenizer.chat_template:
             system_prompt = "" if system_prompt is None else system_prompt
+
+            # Build user content - as list if image, as string if text-only
+            if image_data is not None:
+                # For vision models: content must be a list with image and text
+                user_content = [
+                    {"type": "image"},  # Placeholder - actual image passed via multi_modal_data
+                    {"type": "text", "text": prompt}
+                ]
+            else:
+                # For text-only: content is just the prompt string
+                user_content = prompt
+
             try:
                 messages = [
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt},
+                    {"role": "user", "content": user_content},
                 ]
                 prompt = self.tokenizer.apply_chat_template(
                     messages, tokenize=False, add_generation_prompt=True
                 )
             except jinja2.exceptions.TemplateError:
-                messages = [
-                    {"role": "user", "content": "\n\n".join([system_prompt, prompt])}
-                ]
+                # Fallback for templates that don't support system role
+                if image_data is not None:
+                    messages = [{"role": "user", "content": user_content}]
+                else:
+                    messages = [
+                        {"role": "user", "content": "\n\n".join([system_prompt, prompt])}
+                    ]
                 prompt = self.tokenizer.apply_chat_template(
                     messages, tokenize=False, add_generation_prompt=True
                 )
@@ -339,8 +376,19 @@ class Predictor(BasePredictor):
 
         request_id = uuid4().hex
 
+        # Prepare inputs with multi-modal data if image is provided
+        if image_data is not None:
+            # Pass multi_modal_data as part of the inputs dictionary
+            inputs = {
+                "prompt": prompt,
+                "multi_modal_data": {"image": image_data}
+            }
+        else:
+            # Text-only: just pass the prompt string
+            inputs = prompt
+
         generator = self.engine.generate(
-            prompt,
+            inputs,
             sampling_params,
             request_id,
         )
@@ -436,12 +484,24 @@ class Predictor(BasePredictor):
                 checkpoints_dir = Path('./checkpoints')
                 local_model_path = checkpoints_dir / model_name
 
-                if local_model_path.exists() and local_model_path.is_dir():
+                # Remove broken symlinks to allow fresh download
+                if local_model_path.is_symlink() and not local_model_path.exists():
+                    print(f"Removing broken symlink: {local_model_path}")
+                    try:
+                        local_model_path.unlink()
+                    except OSError as e:
+                        print(f"Warning: Failed to remove broken symlink: {e}")
+
+                # Check if valid cached model exists
+                elif local_model_path.exists() and local_model_path.is_dir():
                     # Check if directory has files (not empty)
-                    if any(local_model_path.iterdir()):
-                        print(f"Found cached model at {local_model_path}, "
-                              f"using local path instead of downloading")
-                        return str(local_model_path)
+                    try:
+                        if any(local_model_path.iterdir()):
+                            print(f"Found cached model at {local_model_path}, "
+                                  f"using local path instead of downloading")
+                            return str(local_model_path)
+                    except (PermissionError, OSError) as e:
+                        print(f"Warning: Cannot read cached dir {local_model_path}: {e}")
 
         return weights_path
 
